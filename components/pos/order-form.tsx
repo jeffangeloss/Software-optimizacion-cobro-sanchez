@@ -122,7 +122,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
                   pattern="[0-9]*"
                   data-pos-nav="order"
                   data-product-id={line.productId}
-                  className="h-[30px] text-center text-base font-semibold"
+                  className="h-[29px] text-center text-base font-semibold"
                   onFocus={(event) => {
                     setActiveProductId(line.productId);
                     event.currentTarget.select();

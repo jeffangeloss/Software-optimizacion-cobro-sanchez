@@ -284,7 +284,7 @@ export function CloseForm({
                   pattern="[0-9]*"
                   data-pos-nav="close"
                   data-product-id={line.productId}
-                  className="h-8 px-1 text-center text-base font-semibold"
+                  className="h-[33px] px-1 text-center text-base font-semibold"
                   disabled={!!closed}
                   onFocus={(event) => {
                     setActiveProductId(line.productId);

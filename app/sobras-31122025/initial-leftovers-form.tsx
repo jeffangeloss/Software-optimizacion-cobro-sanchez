@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { saveInitialLeftovers, verifyInitPin } from "@/app/actions/init-leftovers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,6 +41,7 @@ export function InitialLeftoversForm({
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState<Message | null>(null);
   const [isPending, startTransition] = useTransition();
+  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const filteredProducts = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -86,6 +88,62 @@ export function InitialLeftoversForm({
         [productId]: qty,
       },
     }));
+  };
+
+  const focusCell = (rowIndex: number, colIndex: number) => {
+    const product = filteredProducts[rowIndex];
+    const vendor = vendors[colIndex];
+    if (!product || !vendor) return;
+    const key = `${vendor.id}:${product.id}`;
+    const el = inputRefs.current[key];
+    if (!el) return;
+    el.focus();
+    el.select();
+  };
+
+  const handleNavKey = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (
+      event.key !== "Enter" &&
+      event.key !== "ArrowDown" &&
+      event.key !== "ArrowUp" &&
+      event.key !== "ArrowLeft" &&
+      event.key !== "ArrowRight"
+    ) {
+      return;
+    }
+
+    const target = event.currentTarget;
+    const rowRaw = target.dataset.row;
+    const colRaw = target.dataset.col;
+    if (rowRaw === undefined || colRaw === undefined) return;
+
+    const rowIndex = Number.parseInt(rowRaw, 10);
+    const colIndex = Number.parseInt(colRaw, 10);
+    if (!Number.isFinite(rowIndex) || !Number.isFinite(colIndex)) return;
+
+    let nextRow = rowIndex;
+    let nextCol = colIndex;
+
+    switch (event.key) {
+      case "Enter":
+      case "ArrowDown":
+        nextRow += 1;
+        break;
+      case "ArrowUp":
+        nextRow -= 1;
+        break;
+      case "ArrowLeft":
+        nextCol -= 1;
+        break;
+      case "ArrowRight":
+        nextCol += 1;
+        break;
+      default:
+        return;
+    }
+
+    event.preventDefault();
+    focusCell(nextRow, nextCol);
   };
 
   if (!vendors.length || !products.length) {
@@ -174,21 +232,27 @@ export function InitialLeftoversForm({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product) => (
+                {filteredProducts.map((product, rowIndex) => (
                   <TableRow key={product.id}>
                     <TableCell className="whitespace-normal font-semibold">
                       {product.name}
                     </TableCell>
-                    {vendors.map((vendor) => (
+                    {vendors.map((vendor, colIndex) => (
                       <TableCell key={`${vendor.id}-${product.id}`} className="text-center">
                         <Input
+                          ref={(el) => {
+                            inputRefs.current[`${vendor.id}:${product.id}`] = el;
+                          }}
                           value={String(values[vendor.id]?.[product.id] ?? 0)}
                           inputMode="numeric"
                           pattern="[0-9]*"
                           className="h-9 w-[90px] text-center"
+                          data-row={rowIndex}
+                          data-col={colIndex}
                           onChange={(event) =>
                             setQty(vendor.id, product.id, event.target.value)
                           }
+                          onKeyDown={handleNavKey}
                         />
                       </TableCell>
                     ))}

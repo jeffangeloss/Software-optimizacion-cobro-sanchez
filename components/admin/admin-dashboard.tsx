@@ -81,11 +81,13 @@ export function AdminDashboard({ products, vendors, settings }: AdminDashboardPr
   };
 
   const saveVendor = () => {
-    if (!newVendor.name.trim() || !newVendor.code.trim()) return;
+    if (!newVendor.name.trim()) return;
     startTransition(async () => {
+      const name = newVendor.name.trim();
+      const code = newVendor.code.trim();
       const created = await createVendor({
-        name: newVendor.name.trim(),
-        code: newVendor.code.trim(),
+        name,
+        ...(code ? { code } : {}),
       });
       setVendorList((prev) => [...prev, created]);
       setNewVendor({ name: "", code: "" });
@@ -215,7 +217,7 @@ export function AdminDashboard({ products, vendors, settings }: AdminDashboardPr
             />
             <Input
               className="w-32"
-              placeholder="Codigo"
+              placeholder="Codigo (auto)"
               value={newVendor.code}
               onChange={(event) =>
                 setNewVendor((prev) => ({ ...prev, code: event.target.value }))
@@ -225,6 +227,9 @@ export function AdminDashboard({ products, vendors, settings }: AdminDashboardPr
               Crear
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Si dejas el codigo vacio, se genera automaticamente.
+          </p>
           <p className="text-xs text-muted-foreground">
             Favoritos activos: {favoritesCount}/8
           </p>

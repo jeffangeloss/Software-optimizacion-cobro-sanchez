@@ -340,26 +340,26 @@ export function CloseForm({
         });
       }}
     >
-      <Card className="p-4">
-        <VendorBadge name={vendor.name} code={vendor.code} size="xl" />
+      <Card className="p-3">
+        <VendorBadge name={vendor.name} code={vendor.code} size="lg" />
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <Button type="button" variant="outline" className="h-11" onClick={onChangeVendor}>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button type="button" variant="outline" className="h-10" onClick={onChangeVendor}>
             Cambiar
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="h-11"
+            className="h-10"
             onClick={() => setHistoryOpen(true)}
           >
             Historial
           </Button>
         </div>
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-2">
           <Input
-            className="h-11 text-base"
+            className="h-10 text-base"
             placeholder="Buscar producto..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -367,7 +367,7 @@ export function CloseForm({
           <p className="text-xs text-muted-foreground">Tip: Enter/↓/↑ para moverte.</p>
         </div>
 
-        <div className="mt-4 space-y-3 rounded-2xl bg-white/70 p-3">
+        <div className="mt-3 space-y-2 rounded-2xl bg-white/70 p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Batería</p>
@@ -378,7 +378,7 @@ export function CloseForm({
                 value={batteryDraft}
                 inputMode="numeric"
                 pattern="[0-9]*"
-                className="h-10 text-center text-lg font-semibold"
+                className="h-9 text-center text-base font-semibold"
                 disabled={!!closed}
                 onFocus={(event) => event.currentTarget.select()}
                 onChange={(event) => setBatteryQty(event.target.value)}
@@ -386,7 +386,7 @@ export function CloseForm({
             </div>
           </div>
 
-          <div className="rounded-2xl bg-slate-900 px-4 py-3 text-center text-2xl text-white">
+          <div className="rounded-2xl bg-slate-900 px-3 py-2 text-center text-xl text-white">
             Total: {formatCurrency(totals.total)}
           </div>
 
@@ -395,7 +395,7 @@ export function CloseForm({
             <Input
               value={paidDraft}
               inputMode="decimal"
-              className="h-11 text-center text-lg font-semibold"
+              className="h-10 text-center text-base font-semibold"
               placeholder="0.00"
               disabled={!!closed}
               onFocus={(event) => event.currentTarget.select()}
@@ -406,14 +406,14 @@ export function CloseForm({
 
           <div className="grid grid-cols-2 gap-2">
             <Button
-              className="h-11 text-base"
+              className="h-10 text-base"
               onClick={() => handleClose(Number(paidDraft || 0))}
               disabled={isPending || !!confirmLine || !!closed}
             >
               A CUENTA
             </Button>
             <Button
-              className="h-11 text-base"
+              className="h-10 text-base"
               onClick={() => handleClose(totals.total)}
               disabled={isPending || !!confirmLine || !!closed}
             >

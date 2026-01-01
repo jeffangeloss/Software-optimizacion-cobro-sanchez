@@ -235,12 +235,12 @@ export function CloseForm({
     >
       <TableHeader>
         <TableRow>
-          <TableHead className="h-8 w-[175px] bg-card text-center">Producto</TableHead>
-          <TableHead className="h-8 w-[56px] bg-card text-center">D.A.</TableHead>
-          <TableHead className="h-8 w-[56px] bg-card text-center">PED.</TableHead>
-          <TableHead className="h-8 w-[72px] bg-card text-center">D.D.</TableHead>
-          <TableHead className="h-8 w-[56px] bg-card text-center">Vnd</TableHead>
-          <TableHead className="h-8 w-[82px] bg-card text-center">Importe</TableHead>
+          <TableHead className="h-9 w-[175px] bg-card text-center">Producto</TableHead>
+          <TableHead className="h-9 w-[56px] bg-card text-center">D.A.</TableHead>
+          <TableHead className="h-9 w-[56px] bg-card text-center">PED.</TableHead>
+          <TableHead className="h-9 w-[72px] bg-card text-center">D.D.</TableHead>
+          <TableHead className="h-9 w-[56px] bg-card text-center">Vnd</TableHead>
+          <TableHead className="h-9 w-[82px] bg-card text-center">Importe</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -260,7 +260,7 @@ export function CloseForm({
 
           return (
             <TableRow key={line.productId} className={rowClass}>
-              <TableCell className="py-[2px] px-2 whitespace-normal text-center">
+              <TableCell className="py-[3px] px-2 whitespace-normal text-center">
                 <p className="text-sm font-semibold leading-tight text-center">
                   {line.productName}{" "}
                   <span className="text-xs font-normal text-muted-foreground">
@@ -268,13 +268,13 @@ export function CloseForm({
                   </span>
                 </p>
               </TableCell>
-              <TableCell className="py-[2px] px-2 text-center text-sm font-semibold">
+              <TableCell className="py-[3px] px-2 text-center text-sm font-semibold">
                 {line.leftoversPrev}
               </TableCell>
-              <TableCell className="py-[2px] px-2 text-center text-sm font-semibold">
+              <TableCell className="py-[3px] px-2 text-center text-sm font-semibold">
                 {line.orderQty}
               </TableCell>
-              <TableCell className="py-[2px] px-2 text-center">
+              <TableCell className="py-[3px] px-2 text-center">
                 <Input
                   ref={(el) => {
                     inputRefs.current[line.productId] = el;
@@ -284,7 +284,7 @@ export function CloseForm({
                   pattern="[0-9]*"
                   data-pos-nav="close"
                   data-product-id={line.productId}
-                  className="h-7 px-1 text-center text-base font-semibold"
+                  className="h-8 px-1 text-center text-base font-semibold"
                   disabled={!!closed}
                   onFocus={(event) => {
                     setActiveProductId(line.productId);
@@ -300,10 +300,10 @@ export function CloseForm({
                   onChange={(event) => setLeftoversNow(line.productId, event.target.value)}
                 />
               </TableCell>
-              <TableCell className="py-[2px] px-2 text-center text-sm font-semibold">
+              <TableCell className="py-[3px] px-2 text-center text-sm font-semibold">
                 {sold}
               </TableCell>
-              <TableCell className="py-[2px] px-2 text-center text-sm font-semibold">
+              <TableCell className="py-[3px] px-2 text-center text-sm font-semibold">
                 {formatCurrency(importe)}
               </TableCell>
             </TableRow>

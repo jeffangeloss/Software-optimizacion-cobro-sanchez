@@ -43,6 +43,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [message, setMessage] = useState<{ text: string; kind: "success" | "error" } | null>(
     null
   );
@@ -73,7 +74,12 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
     el.select();
   };
 
+  const requestSaveConfirm = () => {
+    setConfirmOpen(true);
+  };
+
   const handleSave = () => {
+    setConfirmOpen(false);
     startTransition(async () => {
       const items = lines.map((line) => ({
         productId: line.productId,
@@ -94,6 +100,45 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
   const splitIndex = Math.ceil(filteredLines.length / 2);
   const leftLines = filteredLines.slice(0, splitIndex);
   const rightLines = filteredLines.slice(splitIndex);
+
+  const orderSummary = useMemo(() => {
+    const left: Array<{ name: string; qty: number }> = [];
+    const right: Array<{ name: string; qty: number }> = [];
+    const fullSplit = Math.ceil(lines.length / 2);
+    const leftIds = new Set(lines.slice(0, fullSplit).map((line) => line.productId));
+    lines.forEach((line) => {
+      const qty = values[line.productId] ?? 0;
+      if (qty <= 0) return;
+      const target = leftIds.has(line.productId) ? left : right;
+      target.push({ name: line.productName, qty });
+    });
+    return { left, right };
+  }, [lines, values]);
+
+  const renderSummaryList = (
+    items: Array<{ name: string; qty: number }>,
+    qtyLabel: string
+  ) => {
+    if (!items.length) {
+      return <p className="text-sm text-muted-foreground">Sin registros.</p>;
+    }
+    return (
+      <div className="rounded-xl border bg-white/70">
+        <div className="flex items-center justify-between border-b px-3 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <span>Producto</span>
+          <span>{qtyLabel}</span>
+        </div>
+        <div className="divide-y">
+          {items.map((item) => (
+            <div key={item.name} className="flex items-center justify-between px-3 py-2 text-sm">
+              <span className="font-medium">{item.name}</span>
+              <span className="text-base font-semibold">{item.qty}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const renderColumn = (columnLines: Line[]) => (
     <Table containerClassName="overflow-x-hidden flex justify-center" className="w-max table-fixed text-sm">
@@ -155,7 +200,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
       onKeyDown={(event) => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
           event.preventDefault();
-          handleSave();
+          requestSaveConfirm();
         }
 
         if (event.key !== "Enter" && event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
@@ -183,7 +228,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
               type="button"
               size="lg"
               className="h-12 text-base"
-              onClick={handleSave}
+              onClick={requestSaveConfirm}
               disabled={isPending}
             >
               Guardar pedido (Ctrl+S)
@@ -241,6 +286,54 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
           ) : null}
         </div>
       </Card>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent
+          className="max-w-2xl"
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            if (isPending) return;
+            handleSave();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Confirmar pedido</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Revisa los productos ingresados en PED. antes de guardar.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Columna izquierda
+                </p>
+                {renderSummaryList(orderSummary.left, "PED.")}
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Columna derecha
+                </p>
+                {renderSummaryList(orderSummary.right, "PED.")}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmOpen(false)}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+              <Button type="button" onClick={handleSave} disabled={isPending}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-md">

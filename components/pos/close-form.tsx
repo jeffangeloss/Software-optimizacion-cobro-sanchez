@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { closeTicket, updateLeftoversNow } from "@/app/actions/tickets";
+import { closeTicket, reopenTicket, updateLeftoversNow } from "@/app/actions/tickets";
 import { VendorBadge } from "@/components/pos/vendor-badge";
 import { VendorHistory } from "@/components/pos/vendor-history";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ type CloseFormProps = {
   ticketId: string;
   vendor: { name: string; code?: string };
   history: Array<{ id: string; date: string; total: number; paymentStatus: string }>;
+  isAdmin: boolean;
   onChangeVendor: () => void;
   initialClosed?: { total: number; balance: number; paymentStatus: string } | null;
   batteryUnitPrice: number;
@@ -36,6 +37,7 @@ export function CloseForm({
   ticketId,
   vendor,
   history,
+  isAdmin,
   onChangeVendor,
   initialClosed = null,
   batteryUnitPrice,
@@ -60,6 +62,11 @@ export function CloseForm({
   const [confirmLine, setConfirmLine] = useState<Line | null>(null);
   const [confirmValue, setConfirmValue] = useState(0);
   const [confirmReason, setConfirmReason] = useState("");
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  const [closeConfirmPaidAmount, setCloseConfirmPaidAmount] = useState(0);
+  const [closeConfirmMode, setCloseConfirmMode] = useState<"A CUENTA" | "COBRADO" | null>(
+    null
+  );
   const [closed, setClosed] = useState<{
     total: number;
     balance: number;
@@ -83,6 +90,45 @@ export function CloseForm({
   const splitIndex = Math.ceil(filteredLines.length / 2);
   const leftLines = filteredLines.slice(0, splitIndex);
   const rightLines = filteredLines.slice(splitIndex);
+
+  const closeSummary = useMemo(() => {
+    const left: Array<{ name: string; qty: number }> = [];
+    const right: Array<{ name: string; qty: number }> = [];
+    const fullSplit = Math.ceil(lines.length / 2);
+    const leftIds = new Set(lines.slice(0, fullSplit).map((line) => line.productId));
+    lines.forEach((line) => {
+      const qty = values[line.productId] ?? 0;
+      if (qty <= 0) return;
+      const target = leftIds.has(line.productId) ? left : right;
+      target.push({ name: line.productName, qty });
+    });
+    return { left, right };
+  }, [lines, values]);
+
+  const renderSummaryList = (
+    items: Array<{ name: string; qty: number }>,
+    qtyLabel: string
+  ) => {
+    if (!items.length) {
+      return <p className="text-sm text-muted-foreground">Sin registros.</p>;
+    }
+    return (
+      <div className="rounded-xl border bg-white/70">
+        <div className="flex items-center justify-between border-b px-3 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          <span>Producto</span>
+          <span>{qtyLabel}</span>
+        </div>
+        <div className="divide-y">
+          {items.map((item) => (
+            <div key={item.name} className="flex items-center justify-between px-3 py-2 text-sm">
+              <span className="font-medium">{item.name}</span>
+              <span className="text-base font-semibold">{item.qty}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const totals = useMemo(() => {
     const subtotal = lines.reduce((acc, line) => {
@@ -113,6 +159,33 @@ export function CloseForm({
   const setPaidAmount = (raw: string) => {
     const normalized = raw.replace(/[^\d.]/g, "");
     setPaidDraft(normalized);
+  };
+
+  const requestCloseConfirm = (paidAmount: number, mode: "A CUENTA" | "COBRADO") => {
+    if (confirmLine) return;
+    setCloseConfirmPaidAmount(paidAmount);
+    setCloseConfirmMode(mode);
+    setCloseConfirmOpen(true);
+  };
+
+  const confirmClose = () => {
+    if (!closeConfirmMode) return;
+    setCloseConfirmOpen(false);
+    setCloseConfirmMode(null);
+    handleClose(closeConfirmPaidAmount);
+  };
+
+  const handleReopen = () => {
+    startTransition(async () => {
+      try {
+        await reopenTicket(ticketId);
+        setClosed(null);
+        setPaidDraft("");
+        setMessage({ text: "Boleta reabierta.", kind: "success" });
+      } catch {
+        setMessage({ text: "No se pudo reabrir.", kind: "error" });
+      }
+    });
   };
 
   const focusRow = (index: number) => {
@@ -342,7 +415,21 @@ export function CloseForm({
     >
       <Card className="flex h-full flex-col gap-3 p-3">
         <div className="space-y-3">
-          <VendorBadge name={vendor.name} code={vendor.code} size="lg" />
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <VendorBadge name={vendor.name} code={vendor.code} size="lg" />
+            {closed ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-10"
+                onClick={() => {
+                  window.open(`/boleta/${ticketId}/imprimir`, "_blank", "noopener,noreferrer");
+                }}
+              >
+                Imprimir boleta
+              </Button>
+            ) : null}
+          </div>
 
           <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" className="h-10" onClick={onChangeVendor}>
@@ -409,15 +496,15 @@ export function CloseForm({
           <div className="grid grid-cols-2 gap-2">
             <Button
               className="h-10 text-base"
-              onClick={() => handleClose(Number(paidDraft || 0))}
-              disabled={isPending || !!confirmLine || !!closed}
+              onClick={() => requestCloseConfirm(Number(paidDraft || 0), "A CUENTA")}
+              disabled={isPending || !!confirmLine || !!closed || closeConfirmOpen}
             >
               A CUENTA
             </Button>
             <Button
               className="h-10 text-base"
-              onClick={() => handleClose(totals.total)}
-              disabled={isPending || !!confirmLine || !!closed}
+              onClick={() => requestCloseConfirm(totals.total, "COBRADO")}
+              disabled={isPending || !!confirmLine || !!closed || closeConfirmOpen}
             >
               COBRADO
             </Button>
@@ -439,19 +526,20 @@ export function CloseForm({
           {closed ? (
             <div className="rounded-2xl bg-slate-50 p-3 text-sm">
               <p className="font-semibold">
-                {closed.paymentStatus} · Total {formatCurrency(closed.total)} · Saldo{" "}
+                {closed.paymentStatus} ? Total {formatCurrency(closed.total)} ? Saldo{" "}
                 {formatCurrency(closed.balance)}
               </p>
-              <Button
-                type="button"
-                variant="secondary"
-                className="mt-3 h-10 w-full"
-                onClick={() => {
-                  window.open(`/boleta/${ticketId}/imprimir`, "_blank", "noopener,noreferrer");
-                }}
-              >
-                Imprimir boleta
-              </Button>
+              {isAdmin ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3 h-10 w-full"
+                  onClick={handleReopen}
+                  disabled={isPending}
+                >
+                  Reabrir boleta (Admin)
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -469,6 +557,71 @@ export function CloseForm({
           ) : null}
         </div>
       </Card>
+
+      <Dialog
+        open={closeConfirmOpen}
+        onOpenChange={(open) => {
+          setCloseConfirmOpen(open);
+          if (!open) {
+            setCloseConfirmMode(null);
+            setCloseConfirmPaidAmount(0);
+          }
+        }}
+      >
+        <DialogContent
+          className="max-w-2xl"
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            if (isPending) return;
+            confirmClose();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Confirmar cobro</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Revisa los productos ingresados en D.D. antes de confirmar.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Columna izquierda
+                </p>
+                {renderSummaryList(closeSummary.left, "D.D.")}
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Columna derecha
+                </p>
+                {renderSummaryList(closeSummary.right, "D.D.")}
+              </div>
+            </div>
+            {closeConfirmMode ? (
+              <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                <p className="font-semibold">{closeConfirmMode}</p>
+                <p className="text-muted-foreground">
+                  Monto: {formatCurrency(closeConfirmPaidAmount)}
+                </p>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCloseConfirmOpen(false)}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+              <Button type="button" onClick={confirmClose} disabled={isPending}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-md">

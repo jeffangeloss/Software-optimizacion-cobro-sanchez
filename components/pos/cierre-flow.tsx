@@ -36,9 +36,10 @@ type Ticket = {
 
 type CierreFlowProps = {
   vendors: Vendor[];
+  isAdmin: boolean;
 };
 
-export function CierreFlow({ vendors }: CierreFlowProps) {
+export function CierreFlow({ vendors, isAdmin }: CierreFlowProps) {
   const router = useRouter();
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -96,6 +97,7 @@ export function CierreFlow({ vendors }: CierreFlowProps) {
         ticketId={ticket.id}
         vendor={{ name: ticket.vendor.name, code: ticket.vendor.code }}
         history={history}
+        isAdmin={isAdmin}
         onChangeVendor={() => {
           setTicket(null);
           setSelectedVendor(null);

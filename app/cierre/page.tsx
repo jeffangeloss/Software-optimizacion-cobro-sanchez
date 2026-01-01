@@ -6,7 +6,7 @@ import { PosClock } from "@/components/pos/pos-clock";
 import { Button } from "@/components/ui/button";
 
 export default async function CierrePage() {
-  await requireSessionOrRedirect("/cierre");
+  const session = await requireSessionOrRedirect("/cierre");
   const vendorsRaw = await prisma.vendor.findMany({
     where: { active: true },
     orderBy: [{ isFavorite: "desc" }, { name: "asc" }],
@@ -38,7 +38,7 @@ export default async function CierrePage() {
           </div>
         </div>
         <div className="min-h-0 flex-1">
-          <CierreFlow vendors={vendors} />
+          <CierreFlow vendors={vendors} isAdmin={session.role === "ADMIN"} />
         </div>
       </div>
     </main>

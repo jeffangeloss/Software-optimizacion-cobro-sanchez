@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireSession } from "@/lib/auth";
+import { requireAdmin, requireSession } from "@/lib/auth";
 import { todayIso } from "@/lib/date";
 import { nonNegativeInt } from "@/lib/validators";
 import { calcBatteryTotal, calcSoldQty, calcSubtotal, sumTotals } from "@/lib/ticket";
@@ -488,4 +488,37 @@ export const markTicketPrinted = async (ticketId: string) => {
     userId: session.userId,
   });
   return { ok: true, printedAt: printedAt.toISOString() };
+};
+
+export const reopenTicket = async (ticketId: string) => {
+  const session = await requireAdmin();
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: ticketId },
+    select: { status: true },
+  });
+  if (!ticket) throw new Error("NOT_FOUND");
+  if (ticket.status !== "CLOSED") return { ok: true, alreadyOpen: true };
+
+  await prisma.ticket.update({
+    where: { id: ticketId },
+    data: {
+      status: "OPEN",
+      paymentStatus: "CREDIT",
+      paidAmount: new Prisma.Decimal(0),
+      balance: new Prisma.Decimal(0),
+      total: new Prisma.Decimal(0),
+      closedAt: null,
+      closedByUserId: null,
+    },
+  });
+
+  await logAudit({
+    entityType: "Ticket",
+    entityId: ticketId,
+    action: "REOPENED",
+    details: {},
+    userId: session.userId,
+  });
+
+  return { ok: true };
 };

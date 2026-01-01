@@ -24,11 +24,21 @@ type OrderFormProps = {
   ticketId: string;
   vendor: { name: string; code?: string };
   history: Array<{ id: string; date: string; total: number; paymentStatus: string }>;
+  ticketDate: string;
+  isCarryOver: boolean;
   onChangeVendor: () => void;
   lines: Line[];
 };
 
-export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: OrderFormProps) {
+export function OrderForm({
+  ticketId,
+  vendor,
+  history,
+  ticketDate,
+  isCarryOver,
+  onChangeVendor,
+  lines,
+}: OrderFormProps) {
   const router = useRouter();
   const initial = useMemo(
     () =>
@@ -129,6 +139,22 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
     </div>
   );
 
+  const formatDateLabel = (value: string) => {
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return new Intl.DateTimeFormat("es-PE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(parsed);
+  };
+
+  const todayLabel = new Intl.DateTimeFormat("es-PE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date());
+
   const renderColumn = (columnLines: Line[]) => (
     <Table containerClassName="overflow-x-hidden flex justify-center" className="w-max table-fixed text-sm">
       <TableHeader>
@@ -211,6 +237,16 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
       <Card className="flex h-full flex-col gap-4 p-4">
         <div className="space-y-4">
           <VendorBadge name={vendor.name} code={vendor.code} size="xl" />
+          {isCarryOver ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="font-semibold">
+                Boleta pendiente del {formatDateLabel(ticketDate)}.
+              </p>
+              <p className="text-xs text-amber-800">
+                Hoy es {todayLabel}. Este pedido se acumula en la boleta pendiente.
+              </p>
+            </div>
+          ) : null}
 
           <div className="grid gap-2">
             <Button

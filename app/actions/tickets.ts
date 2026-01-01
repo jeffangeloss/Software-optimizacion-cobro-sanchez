@@ -61,12 +61,6 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
       include: { lines: { include: { product: true } }, vendor: true },
     });
     if (pending) {
-      if (pending.date !== targetDate) {
-        await prisma.ticket.update({
-          where: { id: pending.id },
-          data: { date: targetDate },
-        });
-      }
       current = pending;
     }
   }
@@ -121,6 +115,8 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
     return {
       id: ticket.id,
       vendor: { name: ticket.vendor.name, code: ticket.vendor.code },
+      date: ticket.date,
+      isCarryOver: ticket.date !== targetDate,
       status: ticket.status,
       batteryUnitPrice: Number(ticket.batteryUnitPrice),
       batteryQty: ticket.batteryQty,
@@ -189,6 +185,8 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
   return {
     id: ticket.id,
     vendor: { name: ticket.vendor.name, code: ticket.vendor.code },
+    date: ticket.date,
+    isCarryOver: false,
     status: ticket.status,
     batteryUnitPrice: Number(ticket.batteryUnitPrice),
     batteryQty: ticket.batteryQty,

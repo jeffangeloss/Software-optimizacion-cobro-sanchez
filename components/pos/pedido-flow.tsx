@@ -26,6 +26,8 @@ type TicketLine = {
 type Ticket = {
   id: string;
   vendor: { name: string; code: string };
+  date: string;
+  isCarryOver: boolean;
   lines: TicketLine[];
 };
 
@@ -89,6 +91,8 @@ export function PedidoFlow({ vendors }: PedidoFlowProps) {
     <div className="h-full">
       <OrderForm
         ticketId={ticket.id}
+        ticketDate={ticket.date}
+        isCarryOver={ticket.isCarryOver}
         vendor={{ name: ticket.vendor.name, code: ticket.vendor.code }}
         history={history}
         onChangeVendor={() => {

@@ -26,6 +26,8 @@ type CloseFormProps = {
   vendor: { name: string; code?: string };
   history: Array<{ id: string; date: string; total: number; paymentStatus: string }>;
   isAdmin: boolean;
+  ticketDate: string;
+  isCarryOver: boolean;
   onChangeVendor: () => void;
   initialClosed?: { total: number; balance: number; paymentStatus: string } | null;
   batteryUnitPrice: number;
@@ -38,6 +40,8 @@ export function CloseForm({
   vendor,
   history,
   isAdmin,
+  ticketDate,
+  isCarryOver,
   onChangeVendor,
   initialClosed = null,
   batteryUnitPrice,
@@ -118,6 +122,22 @@ export function CloseForm({
       </div>
     </div>
   );
+
+  const formatDateLabel = (value: string) => {
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return new Intl.DateTimeFormat("es-PE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(parsed);
+  };
+
+  const todayLabel = new Intl.DateTimeFormat("es-PE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date());
 
   const totals = useMemo(() => {
     const subtotal = lines.reduce((acc, line) => {
@@ -419,6 +439,16 @@ export function CloseForm({
               </Button>
             ) : null}
           </div>
+          {isCarryOver ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="font-semibold">
+                Boleta pendiente del {formatDateLabel(ticketDate)}.
+              </p>
+              <p className="text-xs text-amber-800">
+                Hoy es {todayLabel}. Este cierre acumula saldos pendientes.
+              </p>
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" className="h-10" onClick={onChangeVendor}>

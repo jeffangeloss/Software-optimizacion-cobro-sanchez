@@ -25,6 +25,8 @@ type TicketLine = {
 type Ticket = {
   id: string;
   vendor: { name: string; code: string };
+  date: string;
+  isCarryOver: boolean;
   status: "OPEN" | "CLOSED";
   batteryUnitPrice: number;
   batteryQty: number;
@@ -98,6 +100,8 @@ export function CierreFlow({ vendors, isAdmin }: CierreFlowProps) {
         vendor={{ name: ticket.vendor.name, code: ticket.vendor.code }}
         history={history}
         isAdmin={isAdmin}
+        ticketDate={ticket.date}
+        isCarryOver={ticket.isCarryOver}
         onChangeVendor={() => {
           setTicket(null);
           setSelectedVendor(null);

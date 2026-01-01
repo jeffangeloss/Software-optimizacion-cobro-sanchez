@@ -45,7 +45,14 @@ export const createProduct = async (data: z.infer<typeof productSchema>) => {
   await requireAdmin();
   const parsed = productSchema.safeParse(data);
   if (!parsed.success) throw new Error("INVALID");
-  const product = await prisma.product.create({ data: parsed.data });
+  const last = await prisma.product.findFirst({
+    orderBy: { displayOrder: "desc" },
+    select: { displayOrder: true },
+  });
+  const nextOrder = (last?.displayOrder ?? 0) + 1;
+  const product = await prisma.product.create({
+    data: { ...parsed.data, displayOrder: nextOrder },
+  });
   return { id: product.id, name: product.name, active: product.active };
 };
 

@@ -11,6 +11,7 @@ type Vendor = {
   code: string;
   isFavorite: boolean;
   hasOrder?: boolean;
+  orderSavedAt?: string;
 };
 
 type VendorSelectProps = {
@@ -48,6 +49,31 @@ export function VendorSelect({ vendors, onSelect }: VendorSelectProps) {
     return vendor.hasOrder ? `${base} bg-emerald-700` : `${base} bg-red-700`;
   };
 
+  const formatOrderSavedAt = (value?: string) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    const time = new Intl.DateTimeFormat("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).format(parsed);
+    const date = new Intl.DateTimeFormat("es-PE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(parsed);
+    return `${date} ${time}`;
+  };
+
+  const renderVendorMeta = (vendor: Vendor) => {
+    const savedAt =
+      vendor.hasOrder && vendor.orderSavedAt ? formatOrderSavedAt(vendor.orderSavedAt) : null;
+    if (!savedAt) return null;
+    return <span className="text-xs text-emerald-800/70">{savedAt}</span>;
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -80,7 +106,7 @@ export function VendorSelect({ vendors, onSelect }: VendorSelectProps) {
                 key={vendor.id}
                 type="button"
                 className={[
-                  "h-14 justify-start text-left text-base",
+                  "min-h-[56px] items-start justify-start py-2 text-left text-base",
                   getStatusClasses(vendor),
                 ].join(" ")}
                 variant="secondary"
@@ -94,7 +120,10 @@ export function VendorSelect({ vendors, onSelect }: VendorSelectProps) {
                 >
                   {vendor.code}
                 </span>
-                {vendor.name}
+                <span className="flex flex-col">
+                  <span className="leading-tight">{vendor.name}</span>
+                  {renderVendorMeta(vendor)}
+                </span>
               </Button>
             ))
           )}
@@ -111,7 +140,7 @@ export function VendorSelect({ vendors, onSelect }: VendorSelectProps) {
               key={vendor.id}
               type="button"
               className={[
-                "h-14 justify-start text-left text-base",
+                "min-h-[56px] items-start justify-start py-2 text-left text-base",
                 getStatusClasses(vendor),
               ].join(" ")}
               variant="outline"
@@ -125,7 +154,10 @@ export function VendorSelect({ vendors, onSelect }: VendorSelectProps) {
               >
                 {vendor.code}
               </span>
-              {vendor.name}
+              <span className="flex flex-col">
+                <span className="leading-tight">{vendor.name}</span>
+                {renderVendorMeta(vendor)}
+              </span>
             </Button>
           ))}
         </div>

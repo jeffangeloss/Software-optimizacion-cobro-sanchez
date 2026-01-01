@@ -20,16 +20,49 @@ export default async function PedidoPage() {
       date: today,
       lines: { some: { orderQty: { gt: 0 } } },
     },
-    select: { vendorId: true },
+    select: { id: true, vendorId: true, createdAt: true },
   });
+  const ticketIds = ticketsWithOrders.map((ticket) => ticket.id);
   const vendorsWithOrders = new Set(ticketsWithOrders.map((ticket) => ticket.vendorId));
-  const vendors = vendorsRaw.map((vendor) => ({
-    id: vendor.id,
-    name: vendor.name,
-    code: vendor.code,
-    isFavorite: vendor.isFavorite,
-    hasOrder: vendorsWithOrders.has(vendor.id),
-  }));
+  const ticketVendorById = new Map(
+    ticketsWithOrders.map((ticket) => [ticket.id, ticket.vendorId])
+  );
+  const fallbackByVendorId = new Map(
+    ticketsWithOrders.map((ticket) => [ticket.vendorId, ticket.createdAt])
+  );
+  const savedAtByVendorId = new Map<string, Date>();
+
+  if (ticketIds.length) {
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        entityType: "Ticket",
+        action: "ORDER_SAVED",
+        entityId: { in: ticketIds },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    for (const log of auditLogs) {
+      const vendorId = ticketVendorById.get(log.entityId);
+      if (!vendorId) continue;
+      if (!savedAtByVendorId.has(vendorId)) {
+        savedAtByVendorId.set(vendorId, log.createdAt);
+      }
+    }
+  }
+
+  const vendors = vendorsRaw.map((vendor) => {
+    const hasOrder = vendorsWithOrders.has(vendor.id);
+    const savedAt = savedAtByVendorId.get(vendor.id) ?? fallbackByVendorId.get(vendor.id);
+    return {
+      id: vendor.id,
+      name: vendor.name,
+      code: vendor.code,
+      isFavorite: vendor.isFavorite,
+      hasOrder,
+      orderSavedAt: hasOrder && savedAt ? savedAt.toISOString() : undefined,
+    };
+  });
 
   return (
     <main className="h-screen overflow-hidden px-3 py-2">

@@ -208,7 +208,7 @@ export const updateOrderQty = async (
 };
 
 export const saveOrder = async (ticketId: string, items: Array<{ productId: string; qty: number }>) => {
-  await requireSession();
+  const session = await requireSession();
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
     select: { status: true },
@@ -228,6 +228,17 @@ export const saveOrder = async (ticketId: string, items: Array<{ productId: stri
       })
     )
   );
+
+  const hasOrder = parsed.data.some((item) => item.qty > 0);
+  if (hasOrder) {
+    await logAudit({
+      entityType: "Ticket",
+      entityId: ticketId,
+      action: "ORDER_SAVED",
+      details: { itemCount: parsed.data.length },
+      userId: session.userId,
+    });
+  }
   return { ok: true };
 };
 

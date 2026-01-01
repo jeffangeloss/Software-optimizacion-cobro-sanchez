@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { saveOrder } from "@/app/actions/tickets";
 import { VendorBadge } from "@/components/pos/vendor-badge";
 import { VendorHistory } from "@/components/pos/vendor-history";
@@ -28,6 +29,7 @@ type OrderFormProps = {
 };
 
 export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: OrderFormProps) {
+  const router = useRouter();
   const initial = useMemo(
     () =>
       lines.reduce<Record<string, number>>((acc, line) => {
@@ -80,6 +82,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
       try {
         await saveOrder(ticketId, items);
         setMessage({ text: "Pedido guardado.", kind: "success" });
+        router.refresh();
       } catch {
         setMessage({ text: "No se pudo guardar (¿boleta ya cerrada?).", kind: "error" });
       } finally {

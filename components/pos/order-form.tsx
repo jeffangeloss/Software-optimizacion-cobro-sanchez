@@ -101,44 +101,33 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
   const leftLines = filteredLines.slice(0, splitIndex);
   const rightLines = filteredLines.slice(splitIndex);
 
-  const orderSummary = useMemo(() => {
-    const left: Array<{ name: string; qty: number }> = [];
-    const right: Array<{ name: string; qty: number }> = [];
-    const fullSplit = Math.ceil(lines.length / 2);
-    const leftIds = new Set(lines.slice(0, fullSplit).map((line) => line.productId));
-    lines.forEach((line) => {
-      const qty = values[line.productId] ?? 0;
-      if (qty <= 0) return;
-      const target = leftIds.has(line.productId) ? left : right;
-      target.push({ name: line.productName, qty });
-    });
-    return { left, right };
-  }, [lines, values]);
+  const confirmRows = useMemo(
+    () =>
+      lines.map((line) => ({
+        name: line.productName,
+        qty: values[line.productId] ?? 0,
+      })),
+    [lines, values]
+  );
 
-  const renderSummaryList = (
-    items: Array<{ name: string; qty: number }>,
-    qtyLabel: string
-  ) => {
-    if (!items.length) {
-      return <p className="text-sm text-muted-foreground">Sin registros.</p>;
-    }
-    return (
-      <div className="rounded-xl border bg-white/70">
-        <div className="flex items-center justify-between border-b px-3 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-          <span>Producto</span>
-          <span>{qtyLabel}</span>
-        </div>
-        <div className="divide-y">
-          {items.map((item) => (
-            <div key={item.name} className="flex items-center justify-between px-3 py-2 text-sm">
-              <span className="font-medium">{item.name}</span>
-              <span className="text-base font-semibold">{item.qty}</span>
-            </div>
-          ))}
-        </div>
+  const renderConfirmTable = () => (
+    <div className="max-h-[55vh] overflow-auto rounded-xl border bg-white/70">
+      <div className="flex items-center justify-between border-b px-3 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        <span>Producto</span>
+        <span>PED.</span>
       </div>
-    );
-  };
+      <div className="divide-y">
+        {confirmRows.map((item) => (
+          <div key={item.name} className="flex items-center justify-between px-3 py-2 text-sm">
+            <span className="font-medium">{item.name}</span>
+            <span className={item.qty ? "text-base font-semibold" : "text-sm text-muted-foreground"}>
+              {item.qty}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const renderColumn = (columnLines: Line[]) => (
     <Table containerClassName="overflow-x-hidden flex justify-center" className="w-max table-fixed text-sm">
@@ -289,7 +278,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent
-          className="max-w-2xl"
+          className="max-w-3xl"
           onKeyDown={(event) => {
             if (event.key !== "Enter") return;
             event.preventDefault();
@@ -302,22 +291,9 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Revisa los productos ingresados en PED. antes de guardar.
+              Revisa todos los productos ingresados en PED. antes de guardar.
             </p>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Columna izquierda
-                </p>
-                {renderSummaryList(orderSummary.left, "PED.")}
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Columna derecha
-                </p>
-                {renderSummaryList(orderSummary.right, "PED.")}
-              </div>
-            </div>
+            {renderConfirmTable()}
             <div className="flex flex-wrap items-center justify-end gap-2">
               <Button
                 type="button"

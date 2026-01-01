@@ -41,6 +41,7 @@ export function InitialLeftoversForm({
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState<Message | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [activeCell, setActiveCell] = useState<{ row: number; col: number } | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const filteredProducts = useMemo(() => {
@@ -88,6 +89,19 @@ export function InitialLeftoversForm({
         [productId]: qty,
       },
     }));
+  };
+
+  const clearVendorColumn = (vendorId: string) => {
+    setValues((prev) => {
+      const nextVendor = { ...(prev[vendorId] ?? {}) };
+      products.forEach((product) => {
+        nextVendor[product.id] = 0;
+      });
+      return {
+        ...prev,
+        [vendorId]: nextVendor,
+      };
+    });
   };
 
   const focusCell = (rowIndex: number, colIndex: number) => {
@@ -217,47 +231,86 @@ export function InitialLeftoversForm({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Table containerClassName="rounded-xl border">
+            <Table containerClassName="rounded-xl border overflow-x-auto">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[220px]">Producto</TableHead>
-                  {vendors.map((vendor) => (
-                    <TableHead key={vendor.id} className="text-center">
-                      <div className="flex flex-col">
-                        <span className="text-xs text-muted-foreground">{vendor.code}</span>
-                        <span className="text-sm font-semibold">{vendor.name}</span>
-                      </div>
-                    </TableHead>
-                  ))}
+                  <TableHead className="sticky left-0 z-30 min-w-[220px] border-r bg-card">
+                    Producto
+                  </TableHead>
+                  {vendors.map((vendor, colIndex) => {
+                    const isActiveCol = activeCell?.col === colIndex;
+                    return (
+                      <TableHead
+                        key={vendor.id}
+                        className={[
+                          "text-center",
+                          isActiveCol ? "bg-amber-50/80" : "",
+                        ].join(" ")}
+                      >
+                        <div className="flex flex-col items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => clearVendorColumn(vendor.id)}
+                          >
+                            Limpiar
+                          </Button>
+                          <span className="text-xs text-muted-foreground">{vendor.code}</span>
+                          <span className="text-sm font-semibold">{vendor.name}</span>
+                        </div>
+                      </TableHead>
+                    );
+                  })}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product, rowIndex) => (
-                  <TableRow key={product.id}>
-                    <TableCell className="whitespace-normal font-semibold">
-                      {product.name}
-                    </TableCell>
-                    {vendors.map((vendor, colIndex) => (
-                      <TableCell key={`${vendor.id}-${product.id}`} className="text-center">
-                        <Input
-                          ref={(el) => {
-                            inputRefs.current[`${vendor.id}:${product.id}`] = el;
-                          }}
-                          value={String(values[vendor.id]?.[product.id] ?? 0)}
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          className="h-9 w-[90px] text-center"
-                          data-row={rowIndex}
-                          data-col={colIndex}
-                          onChange={(event) =>
-                            setQty(vendor.id, product.id, event.target.value)
-                          }
-                          onKeyDown={handleNavKey}
-                        />
+                {filteredProducts.map((product, rowIndex) => {
+                  const isActiveRow = activeCell?.row === rowIndex;
+                  return (
+                    <TableRow key={product.id} className={isActiveRow ? "bg-amber-50/60" : ""}>
+                      <TableCell
+                        className={[
+                          "sticky left-0 z-20 whitespace-normal border-r font-semibold",
+                          isActiveRow ? "bg-amber-50/80" : "bg-white",
+                        ].join(" ")}
+                      >
+                        {product.name}
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                      {vendors.map((vendor, colIndex) => {
+                        const isActiveCol = activeCell?.col === colIndex;
+                        return (
+                          <TableCell
+                            key={`${vendor.id}-${product.id}`}
+                            className={[
+                              "text-center",
+                              isActiveCol ? "bg-amber-50/60" : "",
+                            ].join(" ")}
+                          >
+                            <Input
+                              ref={(el) => {
+                                inputRefs.current[`${vendor.id}:${product.id}`] = el;
+                              }}
+                              value={String(values[vendor.id]?.[product.id] ?? 0)}
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="h-9 w-[90px] text-center"
+                              data-row={rowIndex}
+                              data-col={colIndex}
+                              onFocus={() => setActiveCell({ row: rowIndex, col: colIndex })}
+                              onBlur={() => setActiveCell(null)}
+                              onChange={(event) =>
+                                setQty(vendor.id, product.id, event.target.value)
+                              }
+                              onKeyDown={handleNavKey}
+                            />
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
             {message ? (

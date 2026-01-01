@@ -96,10 +96,10 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
     <Table containerClassName="overflow-x-hidden flex justify-center" className="w-max table-fixed text-sm">
       <TableHeader>
         <TableRow>
-          <TableHead className="h-9 w-[78px] bg-card">PDD</TableHead>
-          <TableHead className="h-9 w-[190px] bg-card">Producto</TableHead>
-          <TableHead className="h-9 w-[92px] bg-card pr-3 text-right">Precio</TableHead>
-          <TableHead className="h-9 w-[92px] bg-card pr-3 text-right">Ayer</TableHead>
+          <TableHead className="h-8 w-[78px] bg-card text-center">PED.</TableHead>
+          <TableHead className="h-8 w-[190px] bg-card text-center">Producto</TableHead>
+          <TableHead className="h-8 w-[92px] bg-card text-center">Precio</TableHead>
+          <TableHead className="h-8 w-[92px] bg-card text-center">D.A.</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -112,7 +112,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
                 isActive ? "border-amber-200 bg-amber-100/60 hover:bg-amber-100/60" : undefined
               }
             >
-              <TableCell className="py-1 px-2">
+              <TableCell className="py-[2px] px-2 text-center">
                 <Input
                   ref={(el) => {
                     inputRefs.current[line.productId] = el;
@@ -122,7 +122,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
                   pattern="[0-9]*"
                   data-pos-nav="order"
                   data-product-id={line.productId}
-                  className="h-8 text-center text-base font-semibold"
+                  className="h-7 text-center text-base font-semibold"
                   onFocus={(event) => {
                     setActiveProductId(line.productId);
                     event.currentTarget.select();
@@ -130,13 +130,13 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
                   onChange={(event) => setQty(line.productId, event.target.value)}
                 />
               </TableCell>
-              <TableCell className="py-1 px-2 whitespace-normal">
+              <TableCell className="py-[2px] px-2 whitespace-normal text-center">
                 <p className="text-sm font-semibold leading-tight">{line.productName}</p>
               </TableCell>
-              <TableCell className="py-1 px-2 pr-3 text-right text-sm font-semibold">
+              <TableCell className="py-[2px] px-2 text-center text-sm font-semibold">
                 {typeof line.unitPriceUsed === "number" ? formatCurrency(line.unitPriceUsed) : "—"}
               </TableCell>
-              <TableCell className="py-1 px-2 pr-3 text-right text-sm font-semibold">
+              <TableCell className="py-[2px] px-2 text-center text-sm font-semibold">
                 {line.leftoversPrev}
               </TableCell>
             </TableRow>

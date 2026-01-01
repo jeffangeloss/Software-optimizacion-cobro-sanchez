@@ -315,7 +315,7 @@ export function CloseForm({
 
   return (
     <div
-      className="grid h-full min-h-0 gap-3 lg:grid-cols-[340px_1fr]"
+      className="grid h-full min-h-0 gap-2 lg:grid-cols-[360px_1fr]"
       onKeyDown={(event) => {
         if (event.key !== "Enter" && event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
 
@@ -340,10 +340,11 @@ export function CloseForm({
         });
       }}
     >
-      <Card className="p-3">
-        <VendorBadge name={vendor.name} code={vendor.code} size="lg" />
+      <Card className="flex h-full flex-col gap-3 p-3">
+        <div className="space-y-3">
+          <VendorBadge name={vendor.name} code={vendor.code} size="lg" />
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" className="h-10" onClick={onChangeVendor}>
             Cambiar
           </Button>
@@ -355,9 +356,9 @@ export function CloseForm({
           >
             Historial
           </Button>
-        </div>
+          </div>
 
-        <div className="mt-3 space-y-2">
+          <div className="space-y-2">
           <Input
             className="h-10 text-base"
             placeholder="Buscar producto..."
@@ -365,9 +366,10 @@ export function CloseForm({
             onChange={(event) => setQuery(event.target.value)}
           />
           <p className="text-xs text-muted-foreground">Tip: Enter/↓/↑ para moverte.</p>
+          </div>
         </div>
 
-        <div className="mt-3 space-y-2 rounded-2xl bg-white/70 p-3">
+        <div className="mt-auto space-y-2 rounded-2xl bg-white/70 p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">Batería</p>
@@ -455,7 +457,7 @@ export function CloseForm({
         </div>
       </Card>
 
-      <Card className="min-h-0 overflow-hidden p-1">
+      <Card className="h-full min-h-0 overflow-hidden p-1">
         <div className="grid h-full min-h-0 gap-2 lg:grid-cols-2">
           <div className="overflow-hidden rounded-xl border bg-white/50">
             {renderColumn(leftLines)}

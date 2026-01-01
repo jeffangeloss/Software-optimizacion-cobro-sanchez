@@ -148,7 +148,7 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
 
   return (
     <div
-      className="grid h-full min-h-0 gap-3 lg:grid-cols-[340px_1fr]"
+      className="grid h-full min-h-0 gap-2 lg:grid-cols-[360px_1fr]"
       onKeyDown={(event) => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
           event.preventDefault();
@@ -171,35 +171,37 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
         focusRow(currentIndex + delta);
       }}
     >
-      <Card className="p-4">
-        <VendorBadge name={vendor.name} code={vendor.code} size="xl" />
+      <Card className="flex h-full flex-col gap-4 p-4">
+        <div className="space-y-4">
+          <VendorBadge name={vendor.name} code={vendor.code} size="xl" />
 
-        <div className="mt-4 grid gap-2">
-          <Button
-            type="button"
-            size="lg"
-            className="h-12 text-base"
-            onClick={handleSave}
-            disabled={isPending}
-          >
-            Guardar pedido (Ctrl+S)
-          </Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button type="button" variant="outline" className="h-11" onClick={onChangeVendor}>
-              Cambiar
-            </Button>
+          <div className="grid gap-2">
             <Button
               type="button"
-              variant="outline"
-              className="h-11"
-              onClick={() => setHistoryOpen(true)}
+              size="lg"
+              className="h-12 text-base"
+              onClick={handleSave}
+              disabled={isPending}
             >
-              Historial
+              Guardar pedido (Ctrl+S)
             </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" className="h-11" onClick={onChangeVendor}>
+                Cambiar
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                onClick={() => setHistoryOpen(true)}
+              >
+                Historial
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-auto space-y-2">
           <Input
             className="h-11 text-base"
             placeholder="Buscar producto..."
@@ -209,12 +211,10 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
           <p className="text-xs text-muted-foreground">
             Tip: Enter/↓/↑ para moverte. Ctrl+S para guardar.
           </p>
-        </div>
-
         {message ? (
           <div
             className={[
-              "mt-4 rounded-xl px-3 py-2 text-sm",
+              "rounded-xl px-3 py-2 text-sm",
               message.kind === "success"
                 ? "bg-emerald-100 text-emerald-700"
                 : "bg-red-100 text-red-700",
@@ -223,9 +223,10 @@ export function OrderForm({ ticketId, vendor, history, onChangeVendor, lines }: 
             {message.text}
           </div>
         ) : null}
+        </div>
       </Card>
 
-      <Card className="min-h-0 overflow-hidden p-1">
+      <Card className="h-full min-h-0 overflow-hidden p-1">
         <div className="grid h-full min-h-0 gap-2 lg:grid-cols-2">
           <div className="overflow-hidden rounded-xl border bg-white/50">
             {renderColumn(leftLines)}

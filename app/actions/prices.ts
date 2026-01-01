@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth";
 import { z } from "zod";
 
@@ -23,6 +24,13 @@ export const setProductPrice = async (data: z.infer<typeof priceSchema>) => {
     },
     update: { price: parsed.data.price },
     create: parsed.data,
+  });
+  await prisma.ticketLine.updateMany({
+    where: {
+      productId: parsed.data.productId,
+      ticket: { date: parsed.data.validFrom, status: "OPEN" },
+    },
+    data: { unitPriceUsed: new Prisma.Decimal(parsed.data.price) },
   });
   return { ok: true };
 };

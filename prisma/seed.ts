@@ -99,12 +99,16 @@ async function main() {
   );
 
   const vendors = [
-    { code: "V001", name: "Luis Ramos", isFavorite: true },
-    { code: "V002", name: "Ana Soto", isFavorite: true },
-    { code: "V003", name: "Carlos Vega", isFavorite: true },
-    { code: "V004", name: "Mariela Cruz", isFavorite: false },
-    { code: "V005", name: "Pedro Tineo", isFavorite: false },
+    { code: "V001", name: "AMBROSIO", isFavorite: true },
+    { code: "V002", name: "MODESTO", isFavorite: true },
+    { code: "V003", name: "CHATE", isFavorite: true },
   ];
+
+  const vendorCodes = vendors.map((vendor) => vendor.code);
+  await prisma.vendor.updateMany({
+    where: { code: { notIn: vendorCodes } },
+    data: { active: false, isFavorite: false },
+  });
 
   await Promise.all(
     vendors.map((vendor) =>

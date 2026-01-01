@@ -231,7 +231,7 @@ export function InitialLeftoversForm({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Table containerClassName="max-h-[65vh] overflow-auto rounded-xl border">
+            <Table containerClassName="rounded-xl border">
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky left-0 top-0 z-40 min-w-[220px] border-r bg-card shadow-sm">

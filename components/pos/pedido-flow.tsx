@@ -11,6 +11,7 @@ type Vendor = {
   name: string;
   code: string;
   isFavorite: boolean;
+  hasOrder?: boolean;
 };
 
 type TicketLine = {

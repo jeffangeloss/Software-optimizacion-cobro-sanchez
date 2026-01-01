@@ -10,6 +10,7 @@ type Vendor = {
   name: string;
   code: string;
   isFavorite: boolean;
+  hasOrder?: boolean;
 };
 
 type VendorSelectProps = {
@@ -34,6 +35,18 @@ export function VendorSelect({ vendors, onSelect }: VendorSelectProps) {
         vendor.code.toLowerCase().includes(q)
     );
   }, [vendors, query]);
+
+  const getStatusClasses = (vendor: Vendor) => {
+    if (vendor.hasOrder === undefined) return "";
+    return vendor.hasOrder
+      ? "border border-emerald-300 bg-emerald-100 text-emerald-950 hover:bg-emerald-200"
+      : "border border-red-300 bg-red-100 text-red-900 hover:bg-red-200";
+  };
+
+  const getPillClasses = (vendor: Vendor, base: string) => {
+    if (vendor.hasOrder === undefined) return base;
+    return vendor.hasOrder ? `${base} bg-emerald-700` : `${base} bg-red-700`;
+  };
 
   return (
     <div className="space-y-6">
@@ -66,11 +79,19 @@ export function VendorSelect({ vendors, onSelect }: VendorSelectProps) {
               <Button
                 key={vendor.id}
                 type="button"
-                className="h-14 justify-start text-left text-base"
+                className={[
+                  "h-14 justify-start text-left text-base",
+                  getStatusClasses(vendor),
+                ].join(" ")}
                 variant="secondary"
                 onClick={() => onSelect(vendor)}
               >
-                <span className="mr-3 rounded-full bg-slate-900 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white">
+                <span
+                  className={getPillClasses(
+                    vendor,
+                    "mr-3 rounded-full bg-slate-900 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white"
+                  )}
+                >
                   {vendor.code}
                 </span>
                 {vendor.name}
@@ -89,11 +110,19 @@ export function VendorSelect({ vendors, onSelect }: VendorSelectProps) {
             <Button
               key={vendor.id}
               type="button"
-              className="h-14 justify-start text-left text-base"
+              className={[
+                "h-14 justify-start text-left text-base",
+                getStatusClasses(vendor),
+              ].join(" ")}
               variant="outline"
               onClick={() => onSelect(vendor)}
             >
-              <span className="mr-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white">
+              <span
+                className={getPillClasses(
+                  vendor,
+                  "mr-3 rounded-full bg-slate-900/80 px-3 py-1 text-xs uppercase tracking-[0.2em] text-white"
+                )}
+              >
                 {vendor.code}
               </span>
               {vendor.name}

@@ -234,7 +234,7 @@ export function InitialLeftoversForm({
             <Table containerClassName="rounded-xl border overflow-x-auto">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky left-0 z-30 min-w-[220px] border-r bg-card">
+                  <TableHead className="sticky left-0 top-0 z-40 min-w-[220px] border-r bg-card">
                     Producto
                   </TableHead>
                   {vendors.map((vendor, colIndex) => {
@@ -243,8 +243,8 @@ export function InitialLeftoversForm({
                       <TableHead
                         key={vendor.id}
                         className={[
-                          "text-center",
-                          isActiveCol ? "bg-amber-50/80" : "",
+                          "sticky top-0 z-30 text-center",
+                          isActiveCol ? "bg-amber-50/80" : "bg-card",
                         ].join(" ")}
                       >
                         <div className="flex flex-col items-center gap-1">

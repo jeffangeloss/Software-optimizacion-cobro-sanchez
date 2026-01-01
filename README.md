@@ -1,10 +1,51 @@
 # Helados Donofrio POS (PWA)
 
-Aplicacion web instalable (PWA) para registrar pedidos en la manana, sobras en la tarde y calcular cobros sin errores de boletas antiguas. Pensada para tablet o PC en modo kiosko.
+Aplicacion web instalable para gestionar pedidos, cierres/cobros y ajustes de sobras con control de errores, trazabilidad y operacion rapida en tablet o PC.
 
-## Requisitos
-- Node.js 20.19+ / 22.12+ / 24+
-- pnpm (recomendado) o npm
+## Alcance funcional
+- Pedido (manana) con reloj, buscador, navegacion por teclado y confirmacion con tabla completa.
+- Cierre/Cobro (tarde) con captura de D.D., validaciones, confirmacion y reabrir boleta (Admin).
+- Seleccion de vendedores con estado (verde = pedido guardado, rojo = sin pedido) y hora de registro.
+- Ajuste inicial de sobras 31/12/2025 con PIN, columna de producto fija, encabezado fijo y limpieza por vendedor.
+- Admin: productos, precios, vendedores, reportes y export CSV.
+- Altas con codigo automatico V### y nuevos productos al final del catalogo.
+- Boleta imprimible en ventana nueva.
+
+## Flujo operativo
+1) **Pedido (manana)**  
+   Selecciona vendedor, revisa sobras de ayer y registra el pedido del dia.
+2) **Cierre/Cobro (tarde)**  
+   Ingresa D.D., valida montos y cierra como COBRADO o A CUENTA.
+3) **Ajuste inicial 31/12/2025**  
+   Carga sobras iniciales con PIN antes de iniciar operaciones.
+4) **Admin**  
+   Mantiene catalogo, precios, vendedores y reportes.
+
+## Reglas de calculo
+- `vendidas = pedido_hoy + sobras_ayer - sobras_hoy`
+- `subtotal = vendidas * precio_usado`
+- `total = suma(subtotales) + bateria`
+- Si `sobras_hoy > sobras_ayer + pedido_hoy`, se solicita confirmacion y motivo.
+
+## Continuidad y casos especiales (boleta pendiente)
+- Si el vendedor no entrega D.D. el mismo dia, no se cierra la boleta.
+- Al iniciar un nuevo dia, el sistema continua la boleta abierta del vendedor.
+- Para sumar un nuevo pedido, agrega cantidades sobre las existentes.
+- Cuando el vendedor entregue D.D., cierra la boleta con el monto recibido total
+  (incluye pagos previos a cuenta).
+- Si el vendedor no trabaja ni pide, no se genera boleta nueva.
+
+## Roles y acceso
+- OPERADOR: Pedido, Cierre/Cobro y historial basico del vendedor.
+- ADMIN: todo lo anterior + productos, precios, vendedores, reportes y configuracion.
+- PIN:
+  - Jeff (ADMIN): `1414`
+  - Papa/Mama (OPERADOR): `0000`
+- Ajuste inicial de sobras: `INIT_LEFTOVERS_PIN` (default `1617`).
+
+## Fotos de vendedores (opcional)
+- Coloca las fotos en `public/vendors/<CODIGO>.jpg` o `public/vendors/<CODIGO>.png`.
+- Ejemplo: `public/vendors/V003.jpg`.
 
 ## Instalacion rapida (npm)
 ```bash
@@ -24,50 +65,17 @@ pnpm prisma:seed
 pnpm dev
 ```
 
-En `.env.local` puedes cambiar `SESSION_SECRET` y el nombre de la app.
+En `.env.local` puedes ajustar `SESSION_SECRET`, `DATABASE_URL` e `INIT_LEFTOVERS_PIN`.
 
 Abre `http://localhost:3000` y listo.
 
-## Roles y acceso
-- OPERADOR: solo puede usar Pedido (manana), Cierre/Cobro (tarde) y ver historial basico del vendedor.
-- ADMIN (Jeff): todo lo anterior + gestion de productos, precios, vendedores, reportes y configuracion de bateria.
-- PIN:
-  - Jeff (ADMIN): `1414`
-  - Papa/Mama (OPERADOR): `0000`
-- El boton "Admin" es discreto y pide PIN para ingresar.
-
-## Fotos de vendedores (opcional)
-- Coloca las fotos en `public/vendors/<CODIGO>.jpg` o `public/vendors/<CODIGO>.png`.
-- Ejemplo: si el vendedor tiene codigo `V003`, el archivo debe llamarse `public/vendors/V003.jpg`.
-- La foto se muestra en Pedido, Cierre y en la boleta impresa.
-
-## Flujo de trabajo
-1) **Pedido (manana)**  
-   Selecciona vendedor, revisa sobras de ayer y registra pedido de hoy.
-2) **Cierre/Cobro (tarde)**  
-   Registra sobras de hoy, el sistema calcula vendidas y subtotal por producto.  
-   Se aplica cargo de bateria y se marca como COBRADO o A CUENTA.
-
-## Reglas clave
-- `vendidas = pedido_hoy + sobras_ayer - sobras_hoy`
-- `subtotal = vendidas * precio_usado`
-- `total = suma(subtotales) + bateria`
-- Sobras de ayer se autollenan con la ultima sobras de ese vendedor.
-- Precios se congelan por boleta (historico no cambia).
-- Si sobras_hoy > sobras_ayer + pedido_hoy, se pide confirmacion y motivo.
-
-## Admin: cambiar precios
-1) Entra a **Admin** (PIN de Jeff).
-2) En **Productos**, escribe el nuevo precio y fecha efectiva.
-3) Guarda. Ese precio aplica solo a boletas futuras.
-
-## Admin: reportes y export
-- **Reporte del dia**: totales, baterias, boletas pagadas/deuda y top productos.
-- **Reporte del dia**: incluye top vendedores por monto.
-- **Export CSV**: rango de fechas y descarga en `.csv`.
+## Admin: precios y reportes
+- Actualiza precios con fecha efectiva; solo aplican a boletas futuras.
+- Reporte del dia incluye totales, bateria, boletas pagadas/deuda y top productos.
+- Export CSV por rango de fechas.
 
 ## PWA y modo kiosko
-- La app genera un `manifest.json` y puede instalarse desde el navegador.
+- La app genera `manifest.json` y se puede instalar desde el navegador.
 - SQLite es local, por lo que funciona offline de manera basica.
 
 ## Comandos utiles
@@ -76,4 +84,3 @@ npm run prisma:migrate
 npm run prisma:seed
 npm run dev
 ```
-

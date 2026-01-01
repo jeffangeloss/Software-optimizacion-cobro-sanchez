@@ -52,13 +52,32 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
     where: { vendorId_date: { vendorId, date: targetDate } },
     include: { lines: { include: { product: true } }, vendor: true },
   });
-  if (existing) {
-    if (existing.status === "OPEN") {
+  let current = existing;
+
+  if (!current) {
+    const pending = await prisma.ticket.findFirst({
+      where: { vendorId, status: "OPEN" },
+      orderBy: { date: "desc" },
+      include: { lines: { include: { product: true } }, vendor: true },
+    });
+    if (pending) {
+      if (pending.date !== targetDate) {
+        await prisma.ticket.update({
+          where: { id: pending.id },
+          data: { date: targetDate },
+        });
+      }
+      current = pending;
+    }
+  }
+
+  if (current) {
+    if (current.status === "OPEN") {
       const products = await prisma.product.findMany({
         where: { active: true },
         orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
       });
-      const existingProductIds = new Set(existing.lines.map((line) => line.productId));
+      const existingProductIds = new Set(current.lines.map((line) => line.productId));
       const missingProducts = products.filter((product) => !existingProductIds.has(product.id));
 
       if (missingProducts.length) {
@@ -69,7 +88,7 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
               getPriceForDate(product.id, targetDate),
             ]);
             return {
-              ticketId: existing.id,
+              ticketId: current.id,
               productId: product.id,
               leftoversPrev,
               orderQty: 0,
@@ -88,7 +107,7 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
     }
 
     const ticket = await prisma.ticket.findUnique({
-      where: { id: existing.id },
+      where: { id: current.id },
       include: { lines: { include: { product: true } }, vendor: true },
     });
     if (!ticket) throw new Error("NOT_FOUND");

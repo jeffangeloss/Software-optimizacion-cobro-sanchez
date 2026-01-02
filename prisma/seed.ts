@@ -40,7 +40,7 @@ async function main() {
 
   const catalog: Array<{ name: string; price: number }> = [
     { name: "BUEN HUMOR", price: 1.0 },
-    { name: "CHOCO KIDS", price: 1.2 },
+    { name: "CHOCO KIDS", price: 1.5 },
     { name: "MINI JET", price: 1.2 },
     { name: "MINI SUBLIME", price: 1.2 },
     { name: "TRIKA", price: 1.2 },
@@ -63,9 +63,9 @@ async function main() {
     { name: "SIN PARAR", price: 4.0 },
     { name: "HIELO CREMA", price: 0.7 },
     { name: "VASO V.", price: 1.2 },
-    { name: "ENVASE X 5L", price: 27.0 },
+    { name: "ENVASE X 5L", price: 28.0 },
     { name: "PINOCHO", price: 0.05 },
-    { name: "GEMELO", price: 0.1 },
+    { name: "GEMELO", price: 0.15 },
     { name: "BARQUIMIEL", price: 0.15 },
     { name: "ZAMBITO", price: 1.0 },
   ];

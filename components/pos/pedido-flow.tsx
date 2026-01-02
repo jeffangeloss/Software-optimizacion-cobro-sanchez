@@ -63,6 +63,20 @@ export function PedidoFlow({ vendors }: PedidoFlowProps) {
           router.replace(`/login?next=${encodeURIComponent("/pedido")}`);
           return;
         }
+        if (message.includes("PRISMA_CLIENT_OUTDATED")) {
+          setSelectedVendor(null);
+          setTicket(null);
+          setHistory([]);
+          setError("Cliente Prisma desactualizado. Ejecuta prisma generate y reinicia.");
+          return;
+        }
+        if (message.includes("DB_MIGRATION_REQUIRED")) {
+          setSelectedVendor(null);
+          setTicket(null);
+          setHistory([]);
+          setError("Base de datos desactualizada. Ejecuta la migracion pendiente.");
+          return;
+        }
         setSelectedVendor(null);
         setTicket(null);
         setHistory([]);

@@ -70,6 +70,20 @@ export function CierreFlow({ vendors, isAdmin }: CierreFlowProps) {
           router.replace(`/login?next=${encodeURIComponent("/cierre")}`);
           return;
         }
+        if (message.includes("PRISMA_CLIENT_OUTDATED")) {
+          setError("Cliente Prisma desactualizado. Ejecuta prisma generate y reinicia.");
+          setSelectedVendor(null);
+          setTicket(null);
+          setHistory([]);
+          return;
+        }
+        if (message.includes("DB_MIGRATION_REQUIRED")) {
+          setError("Base de datos desactualizada. Ejecuta la migracion pendiente.");
+          setSelectedVendor(null);
+          setTicket(null);
+          setHistory([]);
+          return;
+        }
         setSelectedVendor(null);
         setTicket(null);
         setHistory([]);

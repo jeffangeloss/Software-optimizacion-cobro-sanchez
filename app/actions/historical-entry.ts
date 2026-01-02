@@ -344,6 +344,19 @@ export const saveHistoricalEntry = async (payload: z.infer<typeof payloadSchema>
         };
       }
     }
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes("leftoversreported") ||
+        message.includes("carryovercredit") ||
+        message.includes("carryoverappliedat")
+      ) {
+        return {
+          ok: false,
+          message: "Cliente Prisma desactualizado. Ejecuta prisma generate y reinicia.",
+        };
+      }
+    }
     return { ok: false, message: "No se pudo guardar." };
   }
 };

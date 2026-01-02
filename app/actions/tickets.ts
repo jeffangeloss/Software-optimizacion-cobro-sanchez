@@ -60,82 +60,155 @@ const getCarryoverSource = async (vendorId: string, targetDate: string) =>
   });
 
 export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => {
-  const session = await requireSession();
-  const targetDate = date ?? todayIso();
-  const applyCarryoverCredit = async (ticketId: string, ticketDate: string) => {
-    if (ticketDate !== targetDate) return null;
-    const source = await getCarryoverSource(vendorId, targetDate);
-    if (!source) return null;
-    const now = new Date();
-    await prisma.ticket.update({
-      where: { id: ticketId },
-      data: { paidAmount: source.carryoverCredit },
-    });
-    await prisma.ticket.update({
-      where: { id: source.id },
-      data: { carryoverAppliedAt: now },
-    });
-    return Number(source.carryoverCredit);
-  };
-  const existing = await prisma.ticket.findUnique({
-    where: { vendorId_date: { vendorId, date: targetDate } },
-    include: { lines: { include: { product: true } }, vendor: true },
-  });
-  let current = existing;
-
-  if (!current) {
-    const pending = await prisma.ticket.findFirst({
-      where: { vendorId, status: "OPEN" },
-      orderBy: { date: "desc" },
+  try {
+    const session = await requireSession();
+    const targetDate = date ?? todayIso();
+    const applyCarryoverCredit = async (ticketId: string, ticketDate: string) => {
+      if (ticketDate !== targetDate) return null;
+      const source = await getCarryoverSource(vendorId, targetDate);
+      if (!source) return null;
+      const now = new Date();
+      await prisma.ticket.update({
+        where: { id: ticketId },
+        data: { paidAmount: source.carryoverCredit },
+      });
+      await prisma.ticket.update({
+        where: { id: source.id },
+        data: { carryoverAppliedAt: now },
+      });
+      return Number(source.carryoverCredit);
+    };
+    const existing = await prisma.ticket.findUnique({
+      where: { vendorId_date: { vendorId, date: targetDate } },
       include: { lines: { include: { product: true } }, vendor: true },
     });
-    if (pending) {
-      current = pending;
-    }
-  }
+    let current = existing;
 
-  if (current) {
-    if (current.status === "OPEN") {
-      const products = await prisma.product.findMany({
-        where: { active: true },
-        orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+    if (!current) {
+      const pending = await prisma.ticket.findFirst({
+        where: { vendorId, status: "OPEN" },
+        orderBy: { date: "desc" },
+        include: { lines: { include: { product: true } }, vendor: true },
       });
-      const existingProductIds = new Set(current.lines.map((line) => line.productId));
-      const missingProducts = products.filter((product) => !existingProductIds.has(product.id));
-
-      if (missingProducts.length) {
-        const newLines = await Promise.all(
-          missingProducts.map(async (product) => {
-            const [leftoversPrev, unitPriceUsed] = await Promise.all([
-              getLeftoversPrev(vendorId, product.id),
-              getPriceForDate(product.id, targetDate),
-            ]);
-            return {
-              ticketId: current.id,
-              productId: product.id,
-              leftoversPrev,
-              orderQty: 0,
-              leftoversNow: 0,
-              soldQty: 0,
-              unitPriceUsed,
-              subtotal: new Prisma.Decimal(0),
-            };
-          })
-        );
-
-        await prisma.$transaction(
-          newLines.map((data) => prisma.ticketLine.create({ data }))
-        );
+      if (pending) {
+        current = pending;
       }
     }
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: current.id },
+    if (current) {
+      if (current.status === "OPEN") {
+        const products = await prisma.product.findMany({
+          where: { active: true },
+          orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+        });
+        const existingProductIds = new Set(current.lines.map((line) => line.productId));
+        const missingProducts = products.filter((product) => !existingProductIds.has(product.id));
+
+        if (missingProducts.length) {
+          const newLines = await Promise.all(
+            missingProducts.map(async (product) => {
+              const [leftoversPrev, unitPriceUsed] = await Promise.all([
+                getLeftoversPrev(vendorId, product.id),
+                getPriceForDate(product.id, targetDate),
+              ]);
+              return {
+                ticketId: current.id,
+                productId: product.id,
+                leftoversPrev,
+                orderQty: 0,
+                leftoversNow: 0,
+                soldQty: 0,
+                unitPriceUsed,
+                subtotal: new Prisma.Decimal(0),
+              };
+            })
+          );
+
+          await prisma.$transaction(
+            newLines.map((data) => prisma.ticketLine.create({ data }))
+          );
+        }
+      }
+
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: current.id },
+        include: { lines: { include: { product: true } }, vendor: true },
+      });
+      if (!ticket) throw new Error("NOT_FOUND");
+      const carryoverPaidAmount =
+        ticket.status === "OPEN" ? await applyCarryoverCredit(ticket.id, ticket.date) : null;
+      const effectivePaidAmount = carryoverPaidAmount ?? Number(ticket.paidAmount);
+      const activeLines = ticket.lines
+        .filter((line) => line.product.active)
+        .sort(
+          (a, b) =>
+            a.product.displayOrder - b.product.displayOrder ||
+            a.product.name.localeCompare(b.product.name)
+        );
+      return {
+        id: ticket.id,
+        vendor: { name: ticket.vendor.name, code: ticket.vendor.code },
+        date: ticket.date,
+        isCarryOver: ticket.date !== targetDate,
+        status: ticket.status,
+        batteryUnitPrice: Number(ticket.batteryUnitPrice),
+        batteryQty: ticket.batteryQty,
+        total: Number(ticket.total),
+        paidAmount: effectivePaidAmount,
+        balance: Number(ticket.balance),
+        paymentStatus: ticket.paymentStatus,
+        lines: activeLines.map((line) => ({
+          productId: line.productId,
+          product: { name: line.product.name },
+          leftoversPrev: line.leftoversPrev,
+          orderQty: line.orderQty,
+          leftoversNow: line.leftoversNow,
+          unitPriceUsed: Number(line.unitPriceUsed),
+        })),
+      };
+    }
+
+    const settings = await ensureSettings();
+    const products = await prisma.product.findMany({
+      where: { active: true },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+    });
+
+    const ticket = await prisma.ticket.create({
+      data: {
+        vendorId,
+        date: targetDate,
+        status: "OPEN",
+        batteryMode: settings.batteryMode,
+        batteryUnitPrice: settings.batteryUnitPrice,
+        batteryQty: settings.batteryQty,
+        total: new Prisma.Decimal(0),
+        paidAmount: new Prisma.Decimal(0),
+        balance: new Prisma.Decimal(0),
+        paymentStatus: "CREDIT",
+        createdByUserId: session.userId,
+        lines: {
+          create: await Promise.all(
+            products.map(async (product) => {
+              const leftoversPrev = await getLeftoversPrev(vendorId, product.id);
+              const unitPriceUsed = await getPriceForDate(product.id, targetDate);
+              return {
+                productId: product.id,
+                leftoversPrev,
+                orderQty: 0,
+                leftoversNow: 0,
+                soldQty: 0,
+                unitPriceUsed,
+                subtotal: new Prisma.Decimal(0),
+              };
+            })
+          ),
+        },
+      },
       include: { lines: { include: { product: true } }, vendor: true },
     });
-    if (!ticket) throw new Error("NOT_FOUND");
-    const carryoverPaidAmount =
-      ticket.status === "OPEN" ? await applyCarryoverCredit(ticket.id, ticket.date) : null;
+
+    const carryoverPaidAmount = await applyCarryoverCredit(ticket.id, ticket.date);
     const effectivePaidAmount = carryoverPaidAmount ?? Number(ticket.paidAmount);
     const activeLines = ticket.lines
       .filter((line) => line.product.active)
@@ -144,11 +217,12 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
           a.product.displayOrder - b.product.displayOrder ||
           a.product.name.localeCompare(b.product.name)
       );
+
     return {
       id: ticket.id,
       vendor: { name: ticket.vendor.name, code: ticket.vendor.code },
       date: ticket.date,
-      isCarryOver: ticket.date !== targetDate,
+      isCarryOver: false,
       status: ticket.status,
       batteryUnitPrice: Number(ticket.batteryUnitPrice),
       batteryQty: ticket.batteryQty,
@@ -165,79 +239,24 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
         unitPriceUsed: Number(line.unitPriceUsed),
       })),
     };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      const message = error.message.toLowerCase();
+      if (
+        message.includes("leftoversreported") ||
+        message.includes("carryovercredit") ||
+        message.includes("carryoverappliedat")
+      ) {
+        throw new Error("PRISMA_CLIENT_OUTDATED");
+      }
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === "P2022") {
+        throw new Error("DB_MIGRATION_REQUIRED");
+      }
+    }
+    throw error;
   }
-
-  const settings = await ensureSettings();
-  const products = await prisma.product.findMany({
-    where: { active: true },
-    orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
-  });
-
-  const ticket = await prisma.ticket.create({
-    data: {
-      vendorId,
-      date: targetDate,
-      status: "OPEN",
-      batteryMode: settings.batteryMode,
-      batteryUnitPrice: settings.batteryUnitPrice,
-      batteryQty: settings.batteryQty,
-      total: new Prisma.Decimal(0),
-      paidAmount: new Prisma.Decimal(0),
-      balance: new Prisma.Decimal(0),
-      paymentStatus: "CREDIT",
-      createdByUserId: session.userId,
-      lines: {
-        create: await Promise.all(
-          products.map(async (product) => {
-            const leftoversPrev = await getLeftoversPrev(vendorId, product.id);
-            const unitPriceUsed = await getPriceForDate(product.id, targetDate);
-            return {
-              productId: product.id,
-              leftoversPrev,
-              orderQty: 0,
-              leftoversNow: 0,
-              soldQty: 0,
-              unitPriceUsed,
-              subtotal: new Prisma.Decimal(0),
-            };
-          })
-        ),
-      },
-    },
-    include: { lines: { include: { product: true } }, vendor: true },
-  });
-
-  const carryoverPaidAmount = await applyCarryoverCredit(ticket.id, ticket.date);
-  const effectivePaidAmount = carryoverPaidAmount ?? Number(ticket.paidAmount);
-  const activeLines = ticket.lines
-    .filter((line) => line.product.active)
-    .sort(
-      (a, b) =>
-        a.product.displayOrder - b.product.displayOrder ||
-        a.product.name.localeCompare(b.product.name)
-    );
-
-  return {
-    id: ticket.id,
-    vendor: { name: ticket.vendor.name, code: ticket.vendor.code },
-    date: ticket.date,
-    isCarryOver: false,
-    status: ticket.status,
-    batteryUnitPrice: Number(ticket.batteryUnitPrice),
-    batteryQty: ticket.batteryQty,
-    total: Number(ticket.total),
-    paidAmount: effectivePaidAmount,
-    balance: Number(ticket.balance),
-    paymentStatus: ticket.paymentStatus,
-    lines: activeLines.map((line) => ({
-      productId: line.productId,
-      product: { name: line.product.name },
-      leftoversPrev: line.leftoversPrev,
-      orderQty: line.orderQty,
-      leftoversNow: line.leftoversNow,
-      unitPriceUsed: Number(line.unitPriceUsed),
-    })),
-  };
 };
 
 export const updateOrderQty = async (

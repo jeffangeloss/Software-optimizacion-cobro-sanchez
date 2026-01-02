@@ -30,6 +30,7 @@ type CloseFormProps = {
   isCarryOver: boolean;
   onChangeVendor: () => void;
   initialClosed?: { total: number; balance: number; paymentStatus: string } | null;
+  initialPaidAmount?: number;
   batteryUnitPrice: number;
   batteryQty: number;
   lines: Line[];
@@ -44,6 +45,7 @@ export function CloseForm({
   isCarryOver,
   onChangeVendor,
   initialClosed = null,
+  initialPaidAmount = 0,
   batteryUnitPrice,
   batteryQty,
   lines,
@@ -62,7 +64,9 @@ export function CloseForm({
   const [activeProductId, setActiveProductId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [batteryDraft, setBatteryDraft] = useState(String(batteryQty));
-  const [paidDraft, setPaidDraft] = useState("");
+  const [paidDraft, setPaidDraft] = useState(
+    initialPaidAmount > 0 ? String(initialPaidAmount) : ""
+  );
   const [confirmLine, setConfirmLine] = useState<Line | null>(null);
   const [confirmValue, setConfirmValue] = useState(0);
   const [confirmReason, setConfirmReason] = useState("");
@@ -509,6 +513,11 @@ export function CloseForm({
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => setPaidAmount(event.target.value)}
             />
+            {initialPaidAmount > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Cuenta a favor aplicada: {formatCurrency(initialPaidAmount)}
+              </p>
+            ) : null}
             <p className="text-xs text-muted-foreground">Saldo: {formatCurrency(saldo)}</p>
           </div>
 

@@ -58,12 +58,16 @@ export function HistoricalEntryForm({ vendors, targetDate }: HistoricalEntryForm
   const [batteryUnitPrice, setBatteryUnitPrice] = useState(0);
   const [paidAmount, setPaidAmount] = useState("");
   const [status, setStatus] = useState<"OPEN" | "CLOSED">("OPEN");
+  const [leftoversReported, setLeftoversReported] = useState(true);
   const [message, setMessage] = useState<Message | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const totals = useMemo(() => {
     const subtotal = lines.reduce((acc, line) => {
-      const sold = line.orderQty + line.leftoversPrev - line.leftoversNow;
+      const effectiveNow = leftoversReported
+        ? line.leftoversNow
+        : line.leftoversPrev + line.orderQty;
+      const sold = line.orderQty + line.leftoversPrev - effectiveNow;
       const lineTotal = sold > 0 ? sold * line.unitPriceUsed : 0;
       return acc + lineTotal;
     }, 0);
@@ -73,7 +77,7 @@ export function HistoricalEntryForm({ vendors, targetDate }: HistoricalEntryForm
       batteryTotal,
       total: subtotal + batteryTotal,
     };
-  }, [lines, batteryUnitPrice, batteryQty]);
+  }, [lines, batteryUnitPrice, batteryQty, leftoversReported]);
 
   const paidValue = Number(paidAmount || 0);
   const balance = Math.max(0, totals.total - paidValue);
@@ -102,6 +106,7 @@ export function HistoricalEntryForm({ vendors, targetDate }: HistoricalEntryForm
         setBatteryUnitPrice(result.batteryUnitPrice);
         setPaidAmount(result.paidAmount ? String(result.paidAmount) : "");
         setStatus(result.status === "CLOSED" ? "CLOSED" : "OPEN");
+        setLeftoversReported(result.leftoversReported ?? true);
       } catch (err) {
         const message = err instanceof Error ? err.message : "";
         if (message.includes("NO_SESSION") || message.includes("FORBIDDEN")) {
@@ -122,11 +127,14 @@ export function HistoricalEntryForm({ vendors, targetDate }: HistoricalEntryForm
           vendorId: selectedVendor.id,
           batteryQty,
           paidAmount: paidValue,
+          leftoversReported,
           entries: lines.map((line) => ({
             productId: line.productId,
             leftoversPrev: line.leftoversPrev,
             orderQty: line.orderQty,
-            leftoversNow: line.leftoversNow,
+            leftoversNow: leftoversReported
+              ? line.leftoversNow
+              : line.leftoversPrev + line.orderQty,
           })),
         });
         if (!result.ok) {
@@ -136,9 +144,11 @@ export function HistoricalEntryForm({ vendors, targetDate }: HistoricalEntryForm
         setStatus("CLOSED");
         setMessage({
           kind: "success",
-          text: `Guardado. Total ${formatCurrency(result.total)} · Saldo ${formatCurrency(
-            result.balance
-          )}.`,
+          text: leftoversReported
+            ? `Guardado. Total ${formatCurrency(result.total)} - Saldo ${formatCurrency(
+                result.balance
+              )}.`
+            : "Guardado. Se traslado D.A + PED. y el A cuenta queda como saldo a favor.",
         });
       } catch {
         setMessage({ kind: "error", text: "No se pudo guardar." });
@@ -188,9 +198,29 @@ export function HistoricalEntryForm({ vendors, targetDate }: HistoricalEntryForm
             <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
               <p className="font-semibold">Fecha objetivo: {formatDateLabel(selectedDate)}</p>
               <p className="text-xs text-muted-foreground">
-                Estado actual: {status === "CLOSED" ? "Cerrada" : "Abierta"}
+                Estado actual:{" "}
+                {status === "CLOSED"
+                  ? leftoversReported
+                    ? "Cerrada"
+                    : "Cerrada (D.D. pendiente)"
+                  : "Abierta"}
               </p>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-sm">
+            <label className="flex items-center gap-2 font-medium text-amber-900">
+              <input
+                type="checkbox"
+                checked={!leftoversReported}
+                onChange={(event) => setLeftoversReported(!event.target.checked)}
+              />
+              D.D. pendiente (trasladar D.A + PED.)
+            </label>
+            <p className="mt-2 text-xs text-amber-800">
+              Cuando esta activo, D.D. se calcula automaticamente y el A cuenta pasa como saldo a
+              favor del siguiente dia.
+            </p>
           </div>
 
           <div className="space-y-2 rounded-2xl bg-white/70 p-3">
@@ -307,10 +337,17 @@ export function HistoricalEntryForm({ vendors, targetDate }: HistoricalEntryForm
                     </TableCell>
                     <TableCell className="text-center">
                       <Input
-                        value={String(line.leftoversNow)}
+                        value={String(
+                          leftoversReported
+                            ? line.leftoversNow
+                            : line.leftoversPrev + line.orderQty
+                        )}
                         inputMode="numeric"
                         pattern="[0-9]*"
                         className="h-9 w-[90px] text-center"
+                        disabled={!leftoversReported}
+                        readOnly={!leftoversReported}
+                        aria-disabled={!leftoversReported}
                         onFocus={(event) => event.currentTarget.select()}
                         onChange={(event) =>
                           setLineValue(line.productId, "leftoversNow", event.target.value)

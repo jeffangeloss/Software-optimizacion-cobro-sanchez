@@ -85,6 +85,9 @@ model Ticket {
   paidAmount       Decimal       @default(0)
   balance          Decimal       @default(0)
   paymentStatus    PaymentStatus @default(CREDIT)
+  leftoversReported Boolean      @default(true)
+  carryoverCredit  Decimal       @default(0)
+  carryoverAppliedAt DateTime?
   createdByUserId  String
   closedByUserId   String?
   createdAt        DateTime      @default(now())

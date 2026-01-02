@@ -20,6 +20,7 @@ const payloadSchema = z.object({
   vendorId: z.string().min(1),
   batteryQty: z.number().int().min(0),
   paidAmount: z.number().min(0),
+  leftoversReported: z.boolean().optional(),
   entries: z.array(entrySchema),
 });
 
@@ -84,7 +85,12 @@ export const getHistoricalEntry = async (params: { vendorId: string; date: strin
     status: ticket?.status ?? "OPEN",
     batteryQty: ticket?.batteryQty ?? settings.batteryQty,
     batteryUnitPrice: Number(settings.batteryUnitPrice),
-    paidAmount: ticket ? Number(ticket.paidAmount) : 0,
+    paidAmount: ticket
+      ? ticket.leftoversReported
+        ? Number(ticket.paidAmount)
+        : Number(ticket.carryoverCredit)
+      : 0,
+    leftoversReported: ticket?.leftoversReported ?? true,
     lines: products.map((product) => {
       const line = lineByProductId.get(product.id);
       const unitPriceUsed = line?.unitPriceUsed ?? priceByProductId.get(product.id);
@@ -108,6 +114,7 @@ export const saveHistoricalEntry = async (payload: z.infer<typeof payloadSchema>
   }
 
   const { vendorId, entries, batteryQty, paidAmount, date } = parsed.data;
+  const leftoversReported = parsed.data.leftoversReported ?? true;
   const products = await prisma.product.findMany({
     where: { active: true },
     orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
@@ -256,7 +263,8 @@ export const saveHistoricalEntry = async (payload: z.infer<typeof payloadSchema>
     batteryTotal
   );
 
-  const paid = Number(paidAmount.toFixed(2));
+  const paid = leftoversReported ? Number(paidAmount.toFixed(2)) : 0;
+  const carryoverCredit = leftoversReported ? 0 : Number(paidAmount.toFixed(2));
   const balance = Number(Math.max(0, total - paid).toFixed(2));
   const paymentStatus = paid >= total ? "PAID" : paid === 0 ? "CREDIT" : "PARTIAL";
 
@@ -271,10 +279,54 @@ export const saveHistoricalEntry = async (payload: z.infer<typeof payloadSchema>
       paidAmount: new Prisma.Decimal(paid),
       balance: new Prisma.Decimal(balance),
       paymentStatus,
+      leftoversReported,
+      carryoverCredit: new Prisma.Decimal(carryoverCredit),
+      carryoverAppliedAt: null,
       closedAt: new Date(),
       closedByUserId: session.userId,
     },
   });
+
+  const carryoverByProductId = new Map(
+    lineUpdates.map((line) => [line.productId, line.leftoversNow])
+  );
+  const nextOpenTicket = await prisma.ticket.findFirst({
+    where: { vendorId, status: "OPEN", date: { gt: date } },
+    orderBy: { date: "asc" },
+    include: { lines: true },
+  });
+
+  if (nextOpenTicket) {
+    await prisma.$transaction(
+      nextOpenTicket.lines.map((line) => {
+        const nextPrev = carryoverByProductId.get(line.productId) ?? line.leftoversPrev;
+        const max = nextPrev + line.orderQty;
+        const nextNow = Math.min(line.leftoversNow, max);
+        const soldQty = Math.max(0, calcSoldQty(line.orderQty, nextPrev, nextNow));
+        const subtotal = calcSubtotal(soldQty, Number(line.unitPriceUsed));
+        return prisma.ticketLine.update({
+          where: { id: line.id },
+          data: {
+            leftoversPrev: nextPrev,
+            leftoversNow: nextNow,
+            soldQty,
+            subtotal: new Prisma.Decimal(subtotal),
+          },
+        });
+      })
+    );
+
+    if (!leftoversReported && carryoverCredit > 0) {
+      await prisma.ticket.update({
+        where: { id: nextOpenTicket.id },
+        data: { paidAmount: new Prisma.Decimal(carryoverCredit) },
+      });
+      await prisma.ticket.update({
+        where: { id: ticketId },
+        data: { carryoverAppliedAt: new Date() },
+      });
+    }
+  }
 
   return { ok: true, total, balance, paymentStatus };
 };

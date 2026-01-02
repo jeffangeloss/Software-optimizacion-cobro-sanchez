@@ -31,6 +31,7 @@ type Ticket = {
   batteryUnitPrice: number;
   batteryQty: number;
   total: number;
+  paidAmount: number;
   balance: number;
   paymentStatus: "PAID" | "CREDIT" | "PARTIAL";
   lines: TicketLine[];
@@ -112,6 +113,7 @@ export function CierreFlow({ vendors, isAdmin }: CierreFlowProps) {
             ? { total: ticket.total, balance: ticket.balance, paymentStatus: ticket.paymentStatus }
             : null
         }
+        initialPaidAmount={ticket.paidAmount}
         batteryUnitPrice={Number(ticket.batteryUnitPrice)}
         batteryQty={ticket.batteryQty}
         lines={ticket.lines.map((line) => ({

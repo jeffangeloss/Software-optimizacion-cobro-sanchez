@@ -45,9 +45,38 @@ const getLeftoversPrev = async (vendorId: string, productId: string) => {
   return last?.leftoversNow ?? 0;
 };
 
+const getCarryoverSource = async (vendorId: string, targetDate: string) =>
+  prisma.ticket.findFirst({
+    where: {
+      vendorId,
+      status: "CLOSED",
+      date: { lt: targetDate },
+      leftoversReported: false,
+      carryoverCredit: { gt: 0 },
+      carryoverAppliedAt: null,
+    },
+    orderBy: { date: "desc" },
+    select: { id: true, carryoverCredit: true },
+  });
+
 export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => {
   const session = await requireSession();
   const targetDate = date ?? todayIso();
+  const applyCarryoverCredit = async (ticketId: string, ticketDate: string) => {
+    if (ticketDate !== targetDate) return null;
+    const source = await getCarryoverSource(vendorId, targetDate);
+    if (!source) return null;
+    const now = new Date();
+    await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { paidAmount: source.carryoverCredit },
+    });
+    await prisma.ticket.update({
+      where: { id: source.id },
+      data: { carryoverAppliedAt: now },
+    });
+    return Number(source.carryoverCredit);
+  };
   const existing = await prisma.ticket.findUnique({
     where: { vendorId_date: { vendorId, date: targetDate } },
     include: { lines: { include: { product: true } }, vendor: true },
@@ -105,6 +134,9 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
       include: { lines: { include: { product: true } }, vendor: true },
     });
     if (!ticket) throw new Error("NOT_FOUND");
+    const carryoverPaidAmount =
+      ticket.status === "OPEN" ? await applyCarryoverCredit(ticket.id, ticket.date) : null;
+    const effectivePaidAmount = carryoverPaidAmount ?? Number(ticket.paidAmount);
     const activeLines = ticket.lines
       .filter((line) => line.product.active)
       .sort(
@@ -121,6 +153,7 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
       batteryUnitPrice: Number(ticket.batteryUnitPrice),
       batteryQty: ticket.batteryQty,
       total: Number(ticket.total),
+      paidAmount: effectivePaidAmount,
       balance: Number(ticket.balance),
       paymentStatus: ticket.paymentStatus,
       lines: activeLines.map((line) => ({
@@ -174,6 +207,8 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
     include: { lines: { include: { product: true } }, vendor: true },
   });
 
+  const carryoverPaidAmount = await applyCarryoverCredit(ticket.id, ticket.date);
+  const effectivePaidAmount = carryoverPaidAmount ?? Number(ticket.paidAmount);
   const activeLines = ticket.lines
     .filter((line) => line.product.active)
     .sort(
@@ -191,6 +226,7 @@ export const getOrCreateOpenTicket = async (vendorId: string, date?: string) => 
     batteryUnitPrice: Number(ticket.batteryUnitPrice),
     batteryQty: ticket.batteryQty,
     total: Number(ticket.total),
+    paidAmount: effectivePaidAmount,
     balance: Number(ticket.balance),
     paymentStatus: ticket.paymentStatus,
     lines: activeLines.map((line) => ({
